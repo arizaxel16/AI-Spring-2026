@@ -37,7 +37,7 @@ class ConnectState(EnvironmentState):
 
     def is_applicable(self, event: int) -> bool:
         """
-        Check if move is playable
+        Check if move is playable.
 
         Parameters
         ----------
@@ -47,13 +47,23 @@ class ConnectState(EnvironmentState):
         Returns
         -------
         bool
-            if event is applicable in event column
+            if event is applicable in event column.
         """
         return self.is_col_free(event)
 
     def transition(self, col: int) -> "ConnectState":
         """
         Implementation of the psi(s, e) function.
+
+        Parameters
+        ----------
+        col : int
+            Index of the column to be played.
+
+        Returns
+        -------
+        ConnectState
+            new board state.
         """
         player = self.get_player()
         h = self.get_heights()[col]
