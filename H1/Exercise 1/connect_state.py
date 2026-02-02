@@ -35,13 +35,32 @@ class ConnectState(EnvironmentState):
         """See base class."""
         raise NotImplementedError("Method is_final must be implemented.")
 
-    def is_applicable(self, event: Any) -> bool:
-        """See base class."""
-        raise NotImplementedError("Method is_applicable must be implemented.")
+    def is_applicable(self, event: int) -> bool:
+        """
+        Check if move is playable
 
-    def transition(self, col: int) -> "EnvironmentState":
-        """See base class."""
-        raise NotImplementedError("Method put must be implemented.")
+        Parameters
+        ----------
+        event : int
+            Index of the column.
+
+        Returns
+        -------
+        bool
+            if event is applicable in event column
+        """
+        return self.is_col_free(event)
+
+    def transition(self, col: int) -> "ConnectState":
+        """
+        Implementation of the psi(s, e) function.
+        """
+        player = self.get_player()
+        h = self.get_heights()[col]
+        row = 5 - h
+        new_board = self.board.copy()
+        new_board[row, col] = player
+        return ConnectState(new_board)
 
     def get_winner(self) -> int:
         """
