@@ -23,7 +23,10 @@ class ConnectState(EnvironmentState):
         board : Optional[np.ndarray]
             A NumPy array representing the board state. If None, an empty board is created.
         """
-        raise NotImplementedError("Class constructor must be implemented.")
+        if board is not None:
+            self.board = board
+        else:
+            self.board = np.zeros((6,7), dtype=int)
 
     def is_final(self) -> bool:
         """See base class."""
@@ -114,3 +117,9 @@ class ConnectState(EnvironmentState):
 
         if fig is not None:
             plt.show()
+
+    def show_terminal(self) -> None:
+        """
+        Visualizes the current board in terminal.
+        """
+        print(self.board)
