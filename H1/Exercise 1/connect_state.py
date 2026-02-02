@@ -54,6 +54,18 @@ class ConnectState(EnvironmentState):
         """
         raise NotImplementedError("Method get_winner must be implemented.")
 
+    def get_player(self) -> int:
+        """
+        Determines whose turn it is.
+
+        Returns
+        -------
+        int
+            -1 if red's turn, 1 if yellow's turn.
+        """
+        return -1 if np.count_nonzero(self.board) % 2 == 0 else 1
+
+
     def is_col_free(self, col: int) -> bool:
         """
         Checks if a tile can be placed in the specified column.
