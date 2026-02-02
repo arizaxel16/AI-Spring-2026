@@ -7,8 +7,8 @@ def test_environment():
 
     # 1. Initialize the State (s0)
     print("Initializing Connect Four Environment...")
-    state = ConnectState(position_map)
-    # state = ConnectState()
+    # state = ConnectState(position_map)
+    state = ConnectState()
 
     # 2. Test initial board setup
     print("Initial Board State:")
@@ -17,7 +17,10 @@ def test_environment():
     print(f'HEIGHTS:', state.get_heights())
 
     for i in range(6):
-        print(state.is_col_free(i))
+        print(f'COL {i} FREE: {state.is_col_free(i)}')
+
+    print(f'FREE COLS:', state.get_free_cols())
+
 
 
 if __name__ == "__main__":

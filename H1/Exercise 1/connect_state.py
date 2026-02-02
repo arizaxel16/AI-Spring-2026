@@ -102,7 +102,11 @@ class ConnectState(EnvironmentState):
         List[int]
             Indices of columns with at least one free cell.
         """
-        raise NotImplementedError("Method get_free_cols must be implemented.")
+        free_cols = []
+        for i in range(6):
+            if self.is_col_free(i):
+                free_cols.append(i)
+        return free_cols
 
     def show(self, size: int = 1500, ax: Optional[plt.Axes] = None) -> None:
         """
