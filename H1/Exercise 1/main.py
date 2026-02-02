@@ -29,5 +29,7 @@ def play_random_game():
     else:
         print("\n*** IT'S A DRAW! ***")
 
+    state.show()
+
 if __name__ == "__main__":
     play_random_game()
