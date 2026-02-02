@@ -65,7 +65,8 @@ class ConnectState(EnvironmentState):
         bool
             True if the column has space for a tile; False otherwise.
         """
-        return self.get_heights()[col] != 6
+        rows, _ = self.board.shape
+        return self.get_heights()[col] < rows
 
     def get_heights(self) -> List[int]:
         """
@@ -88,7 +89,9 @@ class ConnectState(EnvironmentState):
             Indices of columns with at least one free cell.
         """
         free_cols = []
-        for i in range(6):
+        _, num_cols = self.board.shape
+
+        for i in range(num_cols):
             if self.is_col_free(i):
                 free_cols.append(i)
         return free_cols
