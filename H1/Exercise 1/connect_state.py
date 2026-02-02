@@ -14,6 +14,9 @@ class ConnectState(EnvironmentState):
     Environment state representation for the Connect Four game.
     """
 
+    ROWS = 6
+    COLS = 7
+
     def __init__(self, board: Optional[np.ndarray] = None):
         """
         Initializes the Connect Four game state.
@@ -26,7 +29,7 @@ class ConnectState(EnvironmentState):
         if board is not None:
             self.board = board
         else:
-            self.board = np.zeros((6,7), dtype=int)
+            self.board = np.zeros((self.ROWS, self.COLS), dtype=int)
 
     def is_final(self) -> bool:
         """See base class."""
