@@ -2,7 +2,7 @@
 from environment_state import EnvironmentState
 
 # Types
-from typing import Optional, List, Any
+from typing import Optional, List
 
 # Libraries
 import numpy as np
@@ -80,13 +80,39 @@ class ConnectState(EnvironmentState):
     def get_winner(self) -> int:
         """
         Determines the winner in the current state.
-
-        Returns
-        -------
-        int
-            -1 if red has won, 1 if yellow has won, 0 if no winner.
+        Returns: -1 for Red, 1 for Yellow, 0 for None.
         """
-        raise NotImplementedError("Method get_winner must be implemented.")
+        board = self.board
+
+        # 1. Horizontal Check
+        for r in range(self.ROWS):
+            for c in range(self.COLS - 3):
+                window = board[r, c:c+4]
+                if np.all(window == 1): return 1
+                if np.all(window == -1): return -1
+
+        # 2. Vertical Check
+        for r in range(self.ROWS - 3):
+            for c in range(self.COLS):
+                window = board[r:r+4, c]
+                if np.all(window == 1): return 1
+                if np.all(window == -1): return -1
+
+        # 3. Diagonal Check (Negative Slope: \)
+        for r in range(self.ROWS - 3):
+            for c in range(self.COLS - 3):
+                window = np.array([board[r+i, c+i] for i in range(4)])
+                if np.all(window == 1): return 1
+                if np.all(window == -1): return -1
+
+        # 4. Diagonal Check (Positive Slope: /)
+        for r in range(3, self.ROWS):
+            for c in range(self.COLS - 3):
+                window = np.array([board[r-i, c+i] for i in range(4)])
+                if np.all(window == 1): return 1
+                if np.all(window == -1): return -1
+
+        return 0
 
     def get_player(self) -> int:
         """
@@ -98,7 +124,6 @@ class ConnectState(EnvironmentState):
             -1 if red's turn, 1 if yellow's turn.
         """
         return -1 if np.count_nonzero(self.board) % 2 == 0 else 1
-
 
     def is_col_free(self, col: int) -> bool:
         """
