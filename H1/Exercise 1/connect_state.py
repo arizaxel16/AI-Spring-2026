@@ -41,47 +41,16 @@ class ConnectState(EnvironmentState):
         return False
 
     def is_applicable(self, event: int) -> bool:
-        """
-        Check if move is playable.
-
-        Parameters
-        ----------
-        event : int
-            Index of the column.
-
-        Returns
-        -------
-        bool
-            if event is applicable in event column.
-        """
         return self.is_col_free(event)
 
     def transition(self, col: int) -> "ConnectState":
-        """
-        Implementation of the psi(s, e) function.
-
-        Parameters
-        ----------
-        col : int
-            Index of the column to be played.
-
-        Returns
-        -------
-        ConnectState
-            new board state.
-        """
         player = self.get_player()
-        h = self.get_heights()[col]
-        row = 5 - h
+        row = 5 - self.get_heights()[col]
         new_board = self.board.copy()
         new_board[row, col] = player
         return ConnectState(new_board)
 
     def get_winner(self) -> int:
-        """
-        Determines the winner in the current state.
-        Returns: -1 for Red, 1 for Yellow, 0 for None.
-        """
         board = self.board
 
         # 1. Horizontal Check
@@ -115,53 +84,16 @@ class ConnectState(EnvironmentState):
         return 0
 
     def get_player(self) -> int:
-        """
-        Determines whose turn it is.
-
-        Returns
-        -------
-        int
-            -1 if red's turn, 1 if yellow's turn.
-        """
         return -1 if np.count_nonzero(self.board) % 2 == 0 else 1
 
     def is_col_free(self, col: int) -> bool:
-        """
-        Checks if a tile can be placed in the specified column.
-
-        Parameters
-        ----------
-        col : int
-            Index of the column.
-
-        Returns
-        -------
-        bool
-            True if the column has space for a tile; False otherwise.
-        """
         rows, _ = self.board.shape
         return self.get_heights()[col] < rows
 
     def get_heights(self) -> List[int]:
-        """
-        Gets the number of tiles placed in each column.
-
-        Returns
-        -------
-        List[int]
-            A list of integers indicating the number of tiles per column.
-        """
         return np.count_nonzero(self.board, axis=0).tolist()
 
     def get_free_cols(self) -> List[int]:
-        """
-        Gets the list of columns where a tile can still be placed.
-
-        Returns
-        -------
-        List[int]
-            Indices of columns with at least one free cell.
-        """
         free_cols = []
         _, num_cols = self.board.shape
 
@@ -171,16 +103,6 @@ class ConnectState(EnvironmentState):
         return free_cols
 
     def show(self, size: int = 1500, ax: Optional[plt.Axes] = None) -> None:
-        """
-        Visualizes the current board state using matplotlib.
-
-        Parameters
-        ----------
-        size : int, optional
-            Size of the stones, by default 1500.
-        ax : Optional[matplotlib.axes._axes.Axes], optional
-            Axes to plot on. If None, a new figure is created.
-        """
         if ax is None:
             fig, ax = plt.subplots()
         else:
@@ -200,7 +122,4 @@ class ConnectState(EnvironmentState):
             plt.show()
 
     def show_terminal(self) -> None:
-        """
-        Visualizes the current board in terminal.
-        """
         print(self.board)
