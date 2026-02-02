@@ -65,7 +65,7 @@ class ConnectState(EnvironmentState):
         bool
             True if the column has space for a tile; False otherwise.
         """
-        raise NotImplementedError("Method is_col_free must be implemented.")
+        return self.get_heights()[col] != 6
 
     def get_heights(self) -> List[int]:
         """

@@ -16,6 +16,9 @@ def test_environment():
 
     print(f'HEIGHTS:', state.get_heights())
 
+    for i in range(6):
+        print(state.is_col_free(i))
+
 
 if __name__ == "__main__":
     test_environment()
