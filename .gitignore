@@ -3,3 +3,4 @@
 .DS_Store
 *.pyc
 /H1/__pycache__
+*.iml
