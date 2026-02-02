@@ -1,28 +1,33 @@
+import random
 from connect_state import ConnectState
-import numpy as np
 
-def test_environment():
-    # 0. Optional setup, debug board (0...41)
-    position_map = np.arange(42).reshape(6, 7)
-
-    # 1. Initialize the State (s0)
-    print("Initializing Connect Four Environment...")
-    # state = ConnectState(position_map)
+def play_random_game():
+    # 1. Start at the initial state s0
     state = ConnectState()
-    rows, cols = state.board.shape
-
-    # 2. Test initial board setup
-    print("Initial Board State:")
+    print("--- Game Started ---")
     state.show_terminal()
 
-    print(f'HEIGHTS:', state.get_heights())
+    # 2. Loop until the referee says it's over
+    while not state.is_final():
+        current_player = "Red (-1)" if state.get_player() == -1 else "Yellow (1)"
 
-    for i in range(cols):
-        print(f'COL {i} FREE: {state.is_col_free(i)}')
+        legal_moves = state.get_free_cols()
+        chosen_col = random.choice(legal_moves)
 
-    print(f'FREE COLS:', state.get_free_cols())
+        print(f"\n{current_player} drops a tile in column {chosen_col}")
 
+        # 3. Transition to the next state
+        state = state.transition(chosen_col)
+        state.show_terminal()
 
+    # 4. Results
+    winner = state.get_winner()
+    if winner == -1:
+        print("\n*** RED WINS! ***")
+    elif winner == 1:
+        print("\n*** YELLOW WINS! ***")
+    else:
+        print("\n*** IT'S A DRAW! ***")
 
 if __name__ == "__main__":
-    test_environment()
+    play_random_game()
