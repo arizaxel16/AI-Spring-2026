@@ -76,7 +76,22 @@ class ConnectState(EnvironmentState):
         List[int]
             A list of integers indicating the number of tiles per column.
         """
-        raise NotImplementedError("Method get_heights must be implemented.")
+        return np.count_nonzero(self.board, axis=0).tolist()
+        # OR
+        # heights = []
+        #
+        # rows, cols = self.board.shape
+        #
+        # for col in range(cols):
+        #     height = 6
+        #     for row in range(rows):
+        #         if self.board[row, col] != 0:
+        #             break
+        #         height = height-1
+        #         print(self.board[row, col])
+        #     heights.append(height)
+        #
+        # return heights
 
     def get_free_cols(self) -> List[int]:
         """
