@@ -32,8 +32,13 @@ class ConnectState(EnvironmentState):
             self.board = np.zeros((self.ROWS, self.COLS), dtype=int)
 
     def is_final(self) -> bool:
-        """See base class."""
-        raise NotImplementedError("Method is_final must be implemented.")
+        if self.get_winner() != 0:
+            return True
+
+        if len(self.get_free_cols()) == 0:
+            return True
+
+        return False
 
     def is_applicable(self, event: int) -> bool:
         """
