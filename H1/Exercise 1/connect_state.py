@@ -41,11 +41,17 @@ class ConnectState(EnvironmentState):
         return False
 
     def is_applicable(self, event: int) -> bool:
+        if not (0 <= event < self.COLS):
+            return False
         return self.is_col_free(event)
 
     def transition(self, col: int) -> "ConnectState":
+        if not self.is_applicable(col):
+            raise ValueError(f"Action {col} is not applicable in the current state.")
+
         player = self.get_player()
-        row = 5 - self.get_heights()[col]
+        row = (self.ROWS - 1) - self.get_heights()[col]
+
         new_board = self.board.copy()
         new_board[row, col] = player
         return ConnectState(new_board)
