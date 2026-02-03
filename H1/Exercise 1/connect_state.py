@@ -41,8 +41,12 @@ class ConnectState(EnvironmentState):
         return False
 
     def is_applicable(self, event: int) -> bool:
+        if not isinstance(event, int):
+            return False
+
         if not (0 <= event < self.COLS):
             return False
+
         return self.is_col_free(event)
 
     def transition(self, col: int) -> "ConnectState":
