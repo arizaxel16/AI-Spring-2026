@@ -7,21 +7,30 @@ from connect4.connect_state import ConnectState
 def get_general_constructive_search_for_sudoku(sudoku):
     """
     Prepares a GeneralConstructiveSearch to solve a Sudoku puzzle.
-
-    Args:
-        sudoku (np.ndarray): 9x9 numpy array representing the Sudoku board.
-
-    Returns:
-        tuple: (GeneralConstructiveSearch, decoder)
-            - search: Search object for solving the Sudoku.
-            - decoder: Function to decode final node to 9x9 board.
-
-    Note:
-        You may choose DFS or BFS with the order argument.
     """
-    raise NotImplementedError(
-        "You must implement 'get_general_constructive_search_for_sudoku'"
-    )
+    # 1. BUILD DOMAINS
+    # We map the 2D sudoku input into a 1D 'flat' dictionary for the engine
+    domains = {}
+    for r in range(9):
+        for c in range(9):
+            flat_idx = r * 9 + c
+            if sudoku[r, c] == 0:
+                domains[flat_idx] = [1, 2, 3, 4, 5, 6, 7, 8, 9]
+            else:
+                # If it's a pre-filled number, the search only has one choice
+                domains[flat_idx] = [sudoku[r, c]]
+
+    # 2. CHOOSE STRATEGY
+    order = "bfs"
+
+    # 3. CREATE SEARCH OBJECT
+    # We pass our generic engine the specific Sudoku constraints
+    search_obj = encode_problem(domains, check_sudoku_constraints, None, order)
+
+    # 4. RETURN BOTH
+    # The grader needs the engine to RUN the search
+    # and the decoder to READ the result.
+    return search_obj, sudoku_decoder
 
 # ========== SUDOKU AUX ==========
 
@@ -41,7 +50,7 @@ def is_valid_sudoku_col(val, col, prev_val, prev_col):
 
 def is_valid_sudoku_3by3(val, row, col, prev_val, prev_row, prev_col):
     """Returns True if there is no 3x3 box conflict."""
-    if (row/3 == prev_row/3) and (col/3 == prev_col/3) and (val == prev_val):
+    if (row//3 == prev_row//3) and (col//3 == prev_col//3) and (val == prev_val):
         return False
     else:
         return True
@@ -73,41 +82,17 @@ def check_sudoku_constraints(node):
 
     return True
 
-def get_general_constructive_search_for_sudoku(sudoku):
-    """
-    This is the "Factory". It builds the rules and hands them to your Engine.
+def sudoku_decoder(node):
+    # Create a blank 9x9 board
+    import numpy as np
+    board = np.zeros((9, 9), dtype=int)
 
-    Args:
-        sudoku: A 9x9 numpy array (0 for empty, 1-9 for fixed)
-    """
-
-    # 1. BUILD DOMAINS
-    # Create a dictionary 'domains' with keys 0 to 80.
-    # Logic: Loop through rows (0-8) and cols (0-8).
-    # Flat Index = r * 9 + c
-    # If sudoku[r,c] == 0: domain is [1,2,3,4,5,6,7,8,9]
-    # If sudoku[r,c] != 0: domain is [sudoku[r,c]]
-    domains = {}
-
-    # 2. CHOOSE STRATEGY
-    # Usually "dfs" is better for Sudoku to find the first solution quickly.
-    order = "dfs"
-
-    # 3. CALL YOUR BRIDGE (Exercise 2)
-    # Use the 'encode_problem' function you already wrote.
-    # Pass: domains, check_sudoku_constraints, None (no 'better' func needed), and order.
-
-    # return encode_problem(...)
-    pass
-
-def print_sudoku_solution(node):
-    """
-    Helpful for you to see if it worked!
-    1. Create a blank 9x9 matrix.
-    2. Loop through the tuple 'node' and fill the matrix using //9 and %9.
-    3. Print the matrix.
-    """
-    pass
+    # Fill it up
+    for i in range(len(node)):
+        r = i // 9
+        c = i % 9
+        board[r, c] = node[i]
+    return board
 
 # ========== JOBSHOP ==========
 
