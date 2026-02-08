@@ -21,14 +21,25 @@ class GeneralConstructiveSearch:
         Notes:
             - The search starts from an empty initial node by default.
         """
-        pass
+
+        # Store the "Rules of the Game"
+        self.expand_func = expand
+        self.goal_func = goal
+        self.better_func = better
+        self.order_str = order
+
+        # Set the starting state
+        self.reset()
 
     def reset(self):
         """
         Resets the search to its initial configuration.
         Useful for re-running the search from scratch.
         """
-        pass
+
+        # These lines "declare" and "initialize" the variables simultaneously
+        self.OPEN = [()]
+        self._best = None
 
     def step(self):
         """
