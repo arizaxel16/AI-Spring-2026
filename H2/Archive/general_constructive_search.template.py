@@ -1,0 +1,77 @@
+class GeneralConstructiveSearch:
+    """
+    Implements a general constructive search with BFS/DFS exploration order.
+
+    Attributes:
+        order (str): Search order strategy ("dfs" or "bfs").
+        best (Any): Best known solution found during the search.
+        active (bool): True if the search can continue, False otherwise.
+    """
+
+    def __init__(self, expand, goal, better=None, order="dfs"):
+        """
+        Initializes the search instance.
+
+        Args:
+            expand (Callable): Function that returns successors of a node.
+            goal (Callable): Function that returns True if a node is a goal.
+            better (Callable, optional): Comparator that returns True if first arg is better.
+            order (str): Exploration strategy ("dfs" or "bfs") to arrange OPEN.
+
+        Notes:
+            - The search starts from an empty initial node by default.
+        """
+        pass
+
+    def reset(self):
+        """
+        Resets the search to its initial configuration.
+        Useful for re-running the search from scratch.
+        """
+        pass
+
+    def step(self):
+        """
+        Executes a single step in the search.
+
+        Returns:
+            bool: True iff a new best solution is found; False otherwise.
+        """
+        pass
+
+    @property
+    def active(self):
+        """
+        Indicates whether the search is still ongoing.
+        It can stop early after finding the first solution if better is None.
+
+        Returns:
+            bool: True if there are nodes left to explore.
+        """
+        raise NotImplementedError("You must implement the 'active' property.")
+
+    @property
+    def best(self):
+        """
+        Returns the current best solution.
+
+        Returns:
+            Any: The best node found so far.
+        """
+        raise NotImplementedError("You must implement the 'best' property.")
+
+
+def encode_problem(domains, constraints, better, order="dfs"):
+    """
+    Encodes a fixed-variable problem as a GeneralConstructiveSearch.
+
+    Args:
+        domains (dict): Mapping of variable names to domain lists.
+        constraints (Callable): Function that returns True if partial assignment is valid.
+        better (Callable): Function that compares two full assignments.
+        order (str): Exploration strategy ("dfs" or "bfs").
+
+    Returns:
+        GeneralConstructiveSearch: Configured search object.
+    """
+    raise NotImplementedError("You must implement 'encode_problem'")
