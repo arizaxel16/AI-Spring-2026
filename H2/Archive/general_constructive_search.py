@@ -51,7 +51,7 @@ class GeneralConstructiveSearch:
         pass
 
     @property
-    def active(self):
+    def active(self) -> bool:
         """
         Indicates whether the search is still ongoing.
         It can stop early after finding the first solution if better is None.
@@ -59,7 +59,16 @@ class GeneralConstructiveSearch:
         Returns:
             bool: True if there are nodes left to explore.
         """
-        raise NotImplementedError("You must implement the 'active' property.")
+        # Rule 1: If there's nothing left to explore, we are definitely not active.
+        if not self.OPEN:
+            return False
+
+        # Rule 2: If we found a solution AND we aren't looking for a "better" one, stop.
+        if self._best is not None and self.better_func is None:
+            return False
+
+        # If neither of the above is true, we keep going!
+        return True
 
     @property
     def best(self):
@@ -69,7 +78,7 @@ class GeneralConstructiveSearch:
         Returns:
             Any: The best node found so far.
         """
-        raise NotImplementedError("You must implement the 'best' property.")
+        return self._best
 
 
 def encode_problem(domains, constraints, better, order="dfs"):
