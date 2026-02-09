@@ -121,7 +121,7 @@ def get_general_constructive_search_for_jobshop(jobshop):
     domains = {i: machine_options for i in range(len(durations))}
 
     # 2. CHOOSE STRATEGY
-    order = "bfs"
+    order = "dfs"
 
     def better(node1, node2):
         return calculate_makespan(node1, durations, num_machines) < calculate_makespan(node2, durations, num_machines)

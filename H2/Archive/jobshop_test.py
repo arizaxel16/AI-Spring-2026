@@ -3,8 +3,8 @@ import numpy as np
 
 def test_jobshop():
     # 2 machines, jobs that take 10, 20, and 30 minutes
-    num_machines = 2
-    durations = [10, 20, 30]
+    num_machines = 5
+    durations = [10, 20, 30, 50, 70, 10, 5, 5]
     jobshop_data = (num_machines, durations)
 
     print(f"Testing JobShop: {num_machines} machines, Jobs: {durations}")
