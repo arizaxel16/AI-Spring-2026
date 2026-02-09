@@ -110,10 +110,48 @@ def get_general_constructive_search_for_jobshop(jobshop):
             - search: Search object for solving the job shop.
             - decoder: Function to decode final node into job-machine assignments.
     """
-    raise NotImplementedError(
-        "You must implement 'get_general_constructive_search_for_jobshop'"
-    )
+    # 1. BUILD DOMAINS
+    # We map the job machine-duration pairs a 1D 'flat' dictionary for the engine
+    num_machines, durations = jobshop
 
+    # We need a list of machine IDs: [0, 1, 2...]
+    machine_options = list(range(num_machines))
+
+    # Keys are job indices (0 to len(durations)-1)
+    domains = {i: machine_options for i in range(len(durations))}
+
+    # 2. CHOOSE STRATEGY
+    order = "bfs"
+
+    def better(node1, node2):
+        return calculate_makespan(node1, durations, num_machines) < calculate_makespan(node2, durations, num_machines)
+
+    # 3. CREATE SEARCH OBJECT
+    search_obj = encode_problem(domains, check_jobshop_constraints, better, order)
+
+    # 4. RETURN BOTH
+    return search_obj, jobshop_decoder
+
+# ========== JOBSHOP AUX ==========
+
+def calculate_makespan(node, durations, num_machines):
+    clocks = [0] * num_machines
+    # We loop through the decisions made in the node so far
+    for job_idx, machine_id in enumerate(node):
+        clocks[machine_id] += durations[job_idx]
+    return max(clocks)
+
+def check_jobshop_constraints(node):
+    return True
+
+def jobshop_decoder(node):
+    # It maps Machine ID -> List of Job IDs
+    machine_dist = {}
+    for job_id, machine_id in enumerate(node):
+        machine_dist.setdefault(machine_id, []).append(job_id)
+    return machine_dist
+
+# ========== CONNECT 4 ==========
 
 def get_general_constructive_search_for_connect_4(opponent):
     """
