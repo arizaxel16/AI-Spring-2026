@@ -6,43 +6,64 @@ from connect4.connect_state import ConnectState
 
 def get_general_constructive_search_for_sudoku(sudoku):
     """
-    Bypass encode_problem for performance: tuple nodes, precomputed peers.
+    Only search empty cells, pre-reduce domains, MRV variable ordering.
     """
-    # Precompute peers (cells sharing row, col, or box) with index < i
-    prior_peers = [[] for _ in range(81)]
+    # Precompute all peers for each cell
+    all_peers = [set() for _ in range(81)]
     for i in range(81):
         r, c = i // 9, i % 9
         br, bc = (r // 3) * 3, (c // 3) * 3
-        s = set()
         for cc in range(9):
-            s.add(r * 9 + cc)
+            all_peers[i].add(r * 9 + cc)
         for rr in range(9):
-            s.add(rr * 9 + c)
+            all_peers[i].add(rr * 9 + c)
         for dr in range(3):
             for dc in range(3):
-                s.add((br + dr) * 9 + (bc + dc))
-        s.discard(i)
-        prior_peers[i] = [k for k in s if k < i]
+                all_peers[i].add((br + dr) * 9 + (bc + dc))
+        all_peers[i].discard(i)
 
-    # Precompute domain for each cell
-    cell_domain = []
+    # Collect given values
+    given = {}
     for i in range(81):
         r, c = i // 9, i % 9
         if sudoku[r, c] != 0:
-            cell_domain.append([sudoku[r, c]])
-        else:
-            cell_domain.append(list(range(1, 10)))
+            given[i] = sudoku[r, c]
+
+    # Pre-reduce domains for empty cells by eliminating values from given peers
+    empty_cells = []
+    cell_domain = {}
+    for i in range(81):
+        if i in given:
+            continue
+        used = set()
+        for p in all_peers[i]:
+            if p in given:
+                used.add(given[p])
+        cell_domain[i] = [v for v in range(1, 10) if v not in used]
+        empty_cells.append(i)
+
+    # MRV: sort empty cells by domain size (most constrained first)
+    empty_cells.sort(key=lambda i: len(cell_domain[i]))
+
+    # Precompute: for each empty cell in our order, which prior empty cells are peers
+    cell_to_idx = {cell: idx for idx, cell in enumerate(empty_cells)}
+    prior_empty_peers = [[] for _ in range(len(empty_cells))]
+    for idx, cell in enumerate(empty_cells):
+        for p in all_peers[cell]:
+            if p in cell_to_idx and cell_to_idx[p] < idx:
+                prior_empty_peers[idx].append(cell_to_idx[p])
+
+    n_empty = len(empty_cells)
 
     def expand(node):
         idx = len(node)
-        if idx >= 81:
+        if idx >= n_empty:
             return []
         children = []
-        peers = prior_peers[idx]
-        for val in cell_domain[idx]:
+        for val in cell_domain[empty_cells[idx]]:
             valid = True
-            for k in peers:
-                if node[k] == val:
+            for pidx in prior_empty_peers[idx]:
+                if node[pidx] == val:
                     valid = False
                     break
             if valid:
@@ -50,7 +71,7 @@ def get_general_constructive_search_for_sudoku(sudoku):
         return children
 
     def goal(node):
-        return len(node) == 81
+        return len(node) == n_empty
 
     search = GeneralConstructiveSearch(expand, goal, None, "dfs")
     search.initial = ()
@@ -59,9 +80,10 @@ def get_general_constructive_search_for_sudoku(sudoku):
     def decoder(node):
         if node is None:
             return None
-        board = np.zeros((9, 9), dtype=int)
-        for i, val in enumerate(node):
-            board[i // 9, i % 9] = val
+        board = sudoku.copy()
+        for idx, val in enumerate(node):
+            cell = empty_cells[idx]
+            board[cell // 9, cell % 9] = val
         return board
 
     return search, decoder
