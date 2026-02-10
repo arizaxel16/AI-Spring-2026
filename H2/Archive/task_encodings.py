@@ -5,55 +5,71 @@ from connect4.connect_state import ConnectState
 # ========== SUDOKU ==========
 
 def get_general_constructive_search_for_sudoku(sudoku):
-    """Fixed-variable problem: 81 cells, each assigned a digit 1-9."""
-    domains = {}
+    """
+    Bypass encode_problem for performance: tuple nodes, precomputed peers.
+    """
+    # Precompute peers (cells sharing row, col, or box) with index < i
+    prior_peers = [[] for _ in range(81)]
+    for i in range(81):
+        r, c = i // 9, i % 9
+        br, bc = (r // 3) * 3, (c // 3) * 3
+        s = set()
+        for cc in range(9):
+            s.add(r * 9 + cc)
+        for rr in range(9):
+            s.add(rr * 9 + c)
+        for dr in range(3):
+            for dc in range(3):
+                s.add((br + dr) * 9 + (bc + dc))
+        s.discard(i)
+        prior_peers[i] = [k for k in s if k < i]
+
+    # Precompute domain for each cell
+    cell_domain = []
     for i in range(81):
         r, c = i // 9, i % 9
         if sudoku[r, c] != 0:
-            domains[i] = [sudoku[r, c]]
+            cell_domain.append([sudoku[r, c]])
         else:
-            domains[i] = list(range(1, 10))
+            cell_domain.append(list(range(1, 10)))
 
-    def check_constraints(node):
-        """Only check the newest cell against its row, col, and 3x3 box."""
-        idx = len(node) - 1
-        val = node[idx]
-        r, c = idx // 9, idx % 9
-        br, bc = (r // 3) * 3, (c // 3) * 3
+    def expand(node):
+        idx = len(node)
+        if idx >= 81:
+            return []
+        children = []
+        peers = prior_peers[idx]
+        for val in cell_domain[idx]:
+            valid = True
+            for k in peers:
+                if node[k] == val:
+                    valid = False
+                    break
+            if valid:
+                children.append(node + (val,))
+        return children
 
-        # Check row
-        for cc in range(9):
-            k = r * 9 + cc
-            if k < idx and node[k] == val:
-                return False
-        # Check column
-        for rr in range(9):
-            k = rr * 9 + c
-            if k < idx and node[k] == val:
-                return False
-        # Check 3x3 box
-        for dr in range(3):
-            for dc in range(3):
-                k = (br + dr) * 9 + (bc + dc)
-                if k < idx and node[k] == val:
-                    return False
-        return True
+    def goal(node):
+        return len(node) == 81
+
+    search = GeneralConstructiveSearch(expand, goal, None, "dfs")
+    search.initial = ()
+    search.reset()
 
     def decoder(node):
         if node is None:
             return None
         board = np.zeros((9, 9), dtype=int)
-        for idx, val in node.items():
-            board[idx // 9, idx % 9] = val
+        for i, val in enumerate(node):
+            board[i // 9, i % 9] = val
         return board
 
-    return encode_problem(domains, check_constraints, None, "dfs"), decoder
+    return search, decoder
 
 
 # ========== JOBSHOP ==========
 
 def get_general_constructive_search_for_jobshop(jobshop):
-    """Fixed-variable problem: assign each job to a machine."""
     m, d = jobshop
     n_jobs = len(d)
     domains = {i: list(range(m)) for i in range(n_jobs)}
@@ -68,7 +84,6 @@ def get_general_constructive_search_for_jobshop(jobshop):
         return makespan(n1) < makespan(n2)
 
     def decoder(node):
-        """Return a dict so grader cost_fun can call .items()."""
         if node is None:
             return None
         return dict(node)
@@ -80,17 +95,13 @@ def get_general_constructive_search_for_jobshop(jobshop):
 
 def get_general_constructive_search_for_connect_4(opponent):
     """
-    Variable-length problem: build Yellow's move sequence to beat Red.
-    Nodes carry state to avoid replaying from scratch.
-    Node = (yellow_moves_tuple, current_state_for_yellow_to_play)
+    Nodes carry state to avoid replaying: (yellow_moves_tuple, state).
     """
-    # Red starts the game
     init_state = ConnectState()
     red_first = opponent(init_state)
     state_after_red = init_state.transition(red_first)
 
     if state_after_red.is_final():
-        # Red wins on first move (impossible in connect-4 but handle gracefully)
         search = GeneralConstructiveSearch(lambda n: [], lambda n: False, None, "dfs")
         return search, lambda n: None
 
@@ -103,17 +114,11 @@ def get_general_constructive_search_for_connect_4(opponent):
             after_yellow = state.transition(col)
             new_moves = moves + (col,)
             if after_yellow.is_final():
-                # Game ended after Yellow's move (Yellow won or draw)
                 children.append((new_moves, after_yellow))
             else:
-                # Red responds
                 red_move = opponent(after_yellow)
                 after_red = after_yellow.transition(red_move)
-                if after_red.is_final():
-                    # Game ended after Red's response
-                    children.append((new_moves, after_red))
-                else:
-                    children.append((new_moves, after_red))
+                children.append((new_moves, after_red))
         return children
 
     def goal(node):
@@ -137,17 +142,12 @@ def get_general_constructive_search_for_connect_4(opponent):
 
 def get_general_constructive_search_for_tour_planning(distances, from_index, to_index):
     """
-    Variable-length problem: find shortest path from from_index to to_index.
-    Nodes are tuples of visited cities (not including from_index).
-    Uses direct GeneralConstructiveSearch construction with tuples for speed.
+    Tuple nodes for speed. Bypass encode_problem.
     """
     n = distances.shape[0]
 
     def expand(node):
-        if len(node) == 0:
-            current = from_index
-        else:
-            current = node[-1]
+        current = node[-1] if len(node) > 0 else from_index
         visited = set(node)
         visited.add(from_index)
         children = []
@@ -174,6 +174,8 @@ def get_general_constructive_search_for_tour_planning(distances, from_index, to_
         return calc_dist(n1) < calc_dist(n2)
 
     search = GeneralConstructiveSearch(expand, goal, better, "dfs")
+    search.initial = ()
+    search.reset()
 
     def decoder(node):
         if node is None:

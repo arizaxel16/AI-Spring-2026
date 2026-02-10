@@ -11,7 +11,7 @@ class GeneralConstructiveSearch:
             better (Callable, optional): Comparator; True if first arg is strictly better.
             order (str): "dfs" (stack) or "bfs" (queue).
         """
-        self.initial = ()
+        self.initial = 0
         self.expand_func = expand
         self.goal_func = goal
         self.better_func = better
@@ -24,22 +24,19 @@ class GeneralConstructiveSearch:
 
     def step(self):
         """
-        One logical iteration: pop a node, expand it, check children for goal.
+        One logical iteration: pop, expand, check children for goal.
         Returns True iff a new best solution was found.
         """
         if not self.active:
             return False
 
-        # Selection
         if self.order_str == "dfs":
             node = self.OPEN.pop()
         else:
             node = self.OPEN.pop(0)
 
-        # Expansion
         children = self.expand_func(node)
 
-        # Process children: goal nodes update best, non-goal nodes go to OPEN
         found_new_best = False
         non_goal = []
         for child in children:
