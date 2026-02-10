@@ -5,191 +5,179 @@ from connect4.connect_state import ConnectState
 # ========== SUDOKU ==========
 
 def get_general_constructive_search_for_sudoku(sudoku):
-    """
-    Prepares a GeneralConstructiveSearch to solve a Sudoku puzzle.
-    """
-    # 1. BUILD DOMAINS
-    # We map the 2D sudoku input into a 1D 'flat' dictionary for the engine
+    """Fixed-variable problem: 81 cells, each assigned a digit 1-9."""
     domains = {}
-    for r in range(9):
-        for c in range(9):
-            flat_idx = r * 9 + c
-            if sudoku[r, c] == 0:
-                domains[flat_idx] = [1, 2, 3, 4, 5, 6, 7, 8, 9]
-            else:
-                # If it's a pre-filled number, the search only has one choice
-                domains[flat_idx] = [sudoku[r, c]]
+    for i in range(81):
+        r, c = i // 9, i % 9
+        if sudoku[r, c] != 0:
+            domains[i] = [sudoku[r, c]]
+        else:
+            domains[i] = list(range(1, 10))
 
-    # 2. CHOOSE STRATEGY
-    order = "bfs"
+    def check_constraints(node):
+        """Only check the newest cell against its row, col, and 3x3 box."""
+        idx = len(node) - 1
+        val = node[idx]
+        r, c = idx // 9, idx % 9
+        br, bc = (r // 3) * 3, (c // 3) * 3
 
-    # 3. CREATE SEARCH OBJECT
-    # We pass our generic engine the specific Sudoku constraints
-    search_obj = encode_problem(domains, check_sudoku_constraints, None, order)
-
-    # 4. RETURN BOTH
-    # The grader needs the engine to RUN the search
-    # and the decoder to READ the result.
-    return search_obj, sudoku_decoder
-
-# ========== SUDOKU AUX ==========
-
-def is_valid_sudoku_row(val, row, prev_val, prev_row):
-    """Returns True if there is no row conflict."""
-    if (row == prev_row) and (val == prev_val):
-        return False
-    else:
+        # Check row
+        for cc in range(9):
+            k = r * 9 + cc
+            if k < idx and node[k] == val:
+                return False
+        # Check column
+        for rr in range(9):
+            k = rr * 9 + c
+            if k < idx and node[k] == val:
+                return False
+        # Check 3x3 box
+        for dr in range(3):
+            for dc in range(3):
+                k = (br + dr) * 9 + (bc + dc)
+                if k < idx and node[k] == val:
+                    return False
         return True
 
-def is_valid_sudoku_col(val, col, prev_val, prev_col):
-    """Returns True if there is no column conflict."""
-    if (col == prev_col) and (val == prev_val):
-        return False
-    else:
-        return True
+    def decoder(node):
+        if node is None:
+            return None
+        board = np.zeros((9, 9), dtype=int)
+        for idx, val in node.items():
+            board[idx // 9, idx % 9] = val
+        return board
 
-def is_valid_sudoku_3by3(val, row, col, prev_val, prev_row, prev_col):
-    """Returns True if there is no 3x3 box conflict."""
-    if (row//3 == prev_row//3) and (col//3 == prev_col//3) and (val == prev_val):
-        return False
-    else:
-        return True
+    return encode_problem(domains, check_constraints, None, "dfs"), decoder
 
-def check_sudoku_constraints(node):
-    """The 'Referee' that combines the micro-rules."""
-    # 1. Identify the new piece of the puzzle
-    val = node[-1]
-    idx = len(node) - 1
-    row = idx // 9
-    col = idx % 9
-
-    # 2. Compare against all previous pieces
-    for i in range(len(node) - 1):
-        prev_val = node[i]
-        prev_row = i // 9
-        prev_col = i % 9
-
-        # 3. Check all three rules
-        # If ANY rule is violated, return False immediately
-        if not is_valid_sudoku_row(val, row, prev_val, prev_row):
-            return False
-
-        if not is_valid_sudoku_col(val, col, prev_val, prev_col):
-            return False
-
-        if not is_valid_sudoku_3by3(val, row, col, prev_val, prev_row, prev_col):
-            return False
-
-    return True
-
-def sudoku_decoder(node):
-    # Create a blank 9x9 board
-    import numpy as np
-    board = np.zeros((9, 9), dtype=int)
-
-    # Fill it up
-    for i in range(len(node)):
-        r = i // 9
-        c = i % 9
-        board[r, c] = node[i]
-    return board
 
 # ========== JOBSHOP ==========
 
 def get_general_constructive_search_for_jobshop(jobshop):
-    """
-    Encodes a Job Shop Scheduling problem as a GeneralConstructiveSearch.
+    """Fixed-variable problem: assign each job to a machine."""
+    m, d = jobshop
+    n_jobs = len(d)
+    domains = {i: list(range(m)) for i in range(n_jobs)}
 
-    Args:
-        jobshop (tuple): A tuple (m, d) where:
-            - m (int): Number of machines.
-            - d (list): List of job durations.
+    def makespan(node):
+        clocks = [0] * m
+        for job_idx, machine_id in node.items():
+            clocks[machine_id] += d[job_idx]
+        return max(clocks)
 
-    Returns:
-        tuple: (GeneralConstructiveSearch, decoder)
-            - search: Search object for solving the job shop.
-            - decoder: Function to decode final node into job-machine assignments.
-    """
-    # 1. BUILD DOMAINS
-    # We map the job machine-duration pairs a 1D 'flat' dictionary for the engine
-    num_machines, durations = jobshop
+    def better(n1, n2):
+        return makespan(n1) < makespan(n2)
 
-    # We need a list of machine IDs: [0, 1, 2...]
-    machine_options = list(range(num_machines))
+    def decoder(node):
+        """Return a dict so grader cost_fun can call .items()."""
+        if node is None:
+            return None
+        return dict(node)
 
-    # Keys are job indices (0 to len(durations)-1)
-    domains = {i: machine_options for i in range(len(durations))}
+    return encode_problem(domains, lambda n: True, better, "dfs"), decoder
 
-    # 2. CHOOSE STRATEGY
-    order = "dfs"
-
-    def better(node1, node2):
-        return calculate_makespan(node1, durations, num_machines) < calculate_makespan(node2, durations, num_machines)
-
-    # 3. CREATE SEARCH OBJECT
-    search_obj = encode_problem(domains, check_jobshop_constraints, better, order)
-
-    # 4. RETURN BOTH
-    return search_obj, jobshop_decoder
-
-# ========== JOBSHOP AUX ==========
-
-def calculate_makespan(node, durations, num_machines):
-    clocks = [0] * num_machines
-    # We loop through the decisions made in the node so far
-    for job_idx, machine_id in enumerate(node):
-        clocks[machine_id] += durations[job_idx]
-    return max(clocks)
-
-def check_jobshop_constraints(node):
-    return True
-
-def jobshop_decoder(node):
-    # It maps Machine ID -> List of Job IDs
-    machine_dist = {}
-    for job_id, machine_id in enumerate(node):
-        machine_dist.setdefault(machine_id, []).append(job_id)
-    return machine_dist
 
 # ========== CONNECT 4 ==========
 
 def get_general_constructive_search_for_connect_4(opponent):
     """
-    Creates a GeneralConstructiveSearch to find a winning strategy for Connect-4.
-
-    Args:
-        opponent (Callable): Function mapping state to opponent's move.
-
-    Returns:
-        tuple: (GeneralConstructiveSearch, decoder)
-            - search: Search object to solve the game.
-            - decoder: Function to extract yellow player’s move sequence.
-
-    Note:
-        You may choose DFS or BFS with the order argument.
+    Variable-length problem: build Yellow's move sequence to beat Red.
+    Nodes carry state to avoid replaying from scratch.
+    Node = (yellow_moves_tuple, current_state_for_yellow_to_play)
     """
-    raise NotImplementedError(
-        "You must implement 'get_general_constructive_search_for_connect_4'"
-    )
+    # Red starts the game
+    init_state = ConnectState()
+    red_first = opponent(init_state)
+    state_after_red = init_state.transition(red_first)
 
+    if state_after_red.is_final():
+        # Red wins on first move (impossible in connect-4 but handle gracefully)
+        search = GeneralConstructiveSearch(lambda n: [], lambda n: False, None, "dfs")
+        return search, lambda n: None
+
+    def expand(node):
+        moves, state = node
+        if state.is_final():
+            return []
+        children = []
+        for col in state.get_free_cols():
+            after_yellow = state.transition(col)
+            new_moves = moves + (col,)
+            if after_yellow.is_final():
+                # Game ended after Yellow's move (Yellow won or draw)
+                children.append((new_moves, after_yellow))
+            else:
+                # Red responds
+                red_move = opponent(after_yellow)
+                after_red = after_yellow.transition(red_move)
+                if after_red.is_final():
+                    # Game ended after Red's response
+                    children.append((new_moves, after_red))
+                else:
+                    children.append((new_moves, after_red))
+        return children
+
+    def goal(node):
+        moves, state = node
+        return state.get_winner() == 1
+
+    search = GeneralConstructiveSearch(expand, goal, None, "dfs")
+    search.initial = ((), state_after_red)
+    search.reset()
+
+    def decoder(node):
+        if node is None:
+            return None
+        moves, state = node
+        return list(moves)
+
+    return search, decoder
+
+
+# ========== TOUR PLANNING ==========
 
 def get_general_constructive_search_for_tour_planning(distances, from_index, to_index):
     """
-    Encodes a tour planning problem as a GeneralConstructiveSearch.
-
-    Args:
-        distances (np.ndarray): Adjacency matrix of distances between cities.
-        from_index (int): Starting city index.
-        to_index (int): Target city index.
-
-    Returns:
-        tuple: (GeneralConstructiveSearch, decoder)
-            - search: Search object to solve the tour planning problem.
-            - decoder: Function that returns the full path of the tour.
-
-    Note:
-        You may choose DFS or BFS with the order argument.
+    Variable-length problem: find shortest path from from_index to to_index.
+    Nodes are tuples of visited cities (not including from_index).
+    Uses direct GeneralConstructiveSearch construction with tuples for speed.
     """
-    raise NotImplementedError(
-        "You must implement 'get_general_constructive_search_for_tour_planning'"
-    )
+    n = distances.shape[0]
+
+    def expand(node):
+        if len(node) == 0:
+            current = from_index
+        else:
+            current = node[-1]
+        visited = set(node)
+        visited.add(from_index)
+        children = []
+        for city in range(n):
+            if city in visited:
+                continue
+            d = distances[current, city]
+            if d == 0 or np.isinf(d):
+                continue
+            children.append(node + (city,))
+        return children
+
+    def goal(node):
+        return len(node) > 0 and node[-1] == to_index
+
+    def calc_dist(node):
+        total, curr = 0, from_index
+        for city in node:
+            total += distances[curr, city]
+            curr = city
+        return total
+
+    def better(n1, n2):
+        return calc_dist(n1) < calc_dist(n2)
+
+    search = GeneralConstructiveSearch(expand, goal, better, "dfs")
+
+    def decoder(node):
+        if node is None:
+            return None
+        return [from_index] + list(node)
+
+    return search, decoder
