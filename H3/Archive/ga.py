@@ -72,7 +72,7 @@ class GeneticSearch:
                 improved = True
 
         # Elitist selection: keep best population_size from parents + offspring
-        combined = pop + offspring
+        combined = list(pop) + list(offspring)
         combined.sort(
             key=functools.cmp_to_key(
                 lambda a, b: -1 if self.better(a, b) else (1 if self.better(b, a) else 0)
