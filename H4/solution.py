@@ -65,48 +65,41 @@ def general_graph_search(
     - Uses CLOSED to ensure we never expand the same node twice.
     - Ensures at most one path to each node is on OPEN at any time.
     - OPEN is FIFO (Remove-First), i.e., graph-search BFS order.
-
-    Parameters
-    ----------
-    n0 : initial node (must be hashable)
-    succ : successor function returning (action, next_node)
-    is_goal : goal predicate on nodes
-    better : optional comparator on complete action sequences; returns True iff
-             first argument is better than second. If provided, the search does
-             NOT stop at first goal; it returns the best goal found.
-
-    Returns
-    -------
-    list[action] if a solution exists, otherwise None.
     """
+    root_path = Path(n0)
+    if is_goal(n0):
+        return []
 
-    OPEN = deque([Path(n0)])
+    OPEN = deque([root_path])
     CLOSED = set()
-    nodes_on_open = set()
-    best = None
-
-    if is_goal(n0): return []
+    nodes_on_open = {n0}
+    best_actions: Optional[List[TAction]] = None
 
     while OPEN:
         p = OPEN.popleft()
-        nodes_on_open.remove(p.head)
+        if p.head in nodes_on_open:
+            nodes_on_open.remove(p.head)
+
+        if p.head in CLOSED:
+            continue
+
         CLOSED.add(p.head)
 
         if is_goal(p.head):
             current_actions = p.actions()
-            if best is None or better(current_actions, best):
-                best = current_actions
+            if best_actions is None or (better and better(current_actions, best_actions)):
+                best_actions = current_actions
 
-        successors = succ(p.head)
+            if better is None:
+                return best_actions
 
-        for action, next_node in successors:
-
+        for action, next_node in succ(p.head):
             if next_node not in CLOSED and next_node not in nodes_on_open:
                 new_path = Path(next_node, p, action)
                 OPEN.append(new_path)
-                nodes_on_open.add(new_path.head)
+                nodes_on_open.add(next_node)
 
-        return best
+    return best_actions
 
 
 def uniform_cost_search(
