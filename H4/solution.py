@@ -48,8 +48,7 @@ class Path(Generic[TNode, TAction]):
 
         while current.parent is not None:
             actions_list.append(current.a)
-            current = self.parent
-            
+            current = current.parent
         return actions_list[::-1]
 
 
@@ -80,6 +79,34 @@ def general_graph_search(
     -------
     list[action] if a solution exists, otherwise None.
     """
+
+    OPEN = deque([Path(n0)])
+    CLOSED = set()
+    nodes_on_open = set()
+    best = None
+
+    if is_goal(n0): return []
+
+    while OPEN:
+        p = OPEN.popleft()
+        nodes_on_open.remove(p.head)
+        CLOSED.add(p.head)
+
+        if is_goal(p.head):
+            current_actions = p.actions()
+            if best is None or better(current_actions, best):
+                best = current_actions
+
+        successors = succ(p.head)
+
+        for action, next_node in successors:
+
+            if next_node not in CLOSED and next_node not in nodes_on_open:
+                new_path = Path(next_node, p, action)
+                OPEN.append(new_path)
+                nodes_on_open.add(new_path.head)
+
+        return best
 
 
 def uniform_cost_search(
