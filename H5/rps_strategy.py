@@ -28,7 +28,19 @@ class RPSStrategy(Strategy):
             Random variable X. Keys are outcome categories in {0,1,2},
             values are lists of points w that map to that category.
         """
-        pass  # TODO
+
+        if origin is None or mapping is None:
+            origin = {i: 0.1 for i in range(1, 11)}
+            mapping = {
+                0: [1, 2, 3, 4, 5], # Rock
+                1: [6, 7, 8, 9],    # Paper
+                2: [10]             # Scissors
+            }
+
+        self.utility_fn = utility_fn
+        self.mode = mode
+
+        self.opponent_dist = self.compute_distribution(origin, mapping)
 
     def decision(self, rng: np.random.Generator) -> int:
         """
@@ -44,4 +56,16 @@ class RPSStrategy(Strategy):
         action : int
             The chosen action in {0=Rock, 1=Paper, 2=Scissors}.
         """
-        pass  # TODO
+
+        if self.mode == 'expected_payoff':
+            values = self.expected_payoff(self.opponent_dist, self.PAYOFF_TABLE)
+        else:
+            values = self.expected_utility(self.opponent_dist, self.PAYOFF_TABLE, self.utility_fn)
+
+        max_val = np.max(values)
+
+        winners = np.where(np.isclose(values, max_val))[0]
+
+        chosen_action = rng.choice(winners)
+
+        return int(chosen_action)

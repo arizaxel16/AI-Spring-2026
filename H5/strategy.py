@@ -24,7 +24,13 @@ class Strategy(ABC):
         dist : ndarray of shape (3,)
             Normalized distribution (P[X=0], P[X=1], P[X=2]).
         """
-        pass  # TODO
+        x_dist = {0: 0.0, 1: 0.0, 2: 0.0}
+
+        for x, omegas in mapping.items():
+            for omega in omegas:
+                x_dist[x] += origin.get(omega, 0)
+
+        return np.array([x_dist[0], x_dist[1], x_dist[2]])
 
     def expected_payoff(self, opponent_dist, payoff_table) -> np.ndarray:
         """
@@ -42,7 +48,9 @@ class Strategy(ABC):
         values : ndarray of shape (3,)
             Expected payoff of each action a=0,1,2.
         """
-        pass  # TODO
+        p_o = np.array(list(opponent_dist.values())) if isinstance(opponent_dist, dict) else np.array(opponent_dist)
+
+        return payoff_table.dot(p_o)
 
     def expected_utility(self, opponent_dist, payoff_table, utility_fn) -> np.ndarray:
         """
@@ -62,7 +70,10 @@ class Strategy(ABC):
         values : ndarray of shape (3,)
             Expected utility of each action a=0,1,2.
         """
-        pass  # TODO
+        utility_payoff_table = np.vectorize(utility_fn)(payoff_table)
+        p_o = np.array(list(opponent_dist.values())) if isinstance(opponent_dist, dict) else np.array(opponent_dist)
+
+        return utility_payoff_table.dot(p_o)
 
     @abstractmethod
     def decision(self, rng: np.random.Generator) -> int:
