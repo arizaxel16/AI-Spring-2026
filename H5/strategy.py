@@ -26,11 +26,18 @@ class Strategy(ABC):
         """
         x_dist = {0: 0.0, 1: 0.0, 2: 0.0}
 
+        total_mass = sum(origin.values())
+
         for x, omegas in mapping.items():
             for omega in omegas:
                 x_dist[x] += origin.get(omega, 0)
 
-        return np.array([x_dist[0], x_dist[1], x_dist[2]])
+        dist = np.array([x_dist[0], x_dist[1], x_dist[2]])
+
+        if total_mass > 0:
+            dist = dist / total_mass
+
+        return dist
 
     def expected_payoff(self, opponent_dist, payoff_table) -> np.ndarray:
         """

@@ -40,7 +40,7 @@ class RPSStrategy(Strategy):
         self.utility_fn = utility_fn
         self.mode = mode
 
-        self.opponent_dist = self.compute_distribution(origin, mapping)
+        self._p = self.compute_distribution(origin, mapping)
 
     def decision(self, rng: np.random.Generator) -> int:
         """
@@ -58,9 +58,9 @@ class RPSStrategy(Strategy):
         """
 
         if self.mode == 'expected_payoff':
-            values = self.expected_payoff(self.opponent_dist, self.PAYOFF_TABLE)
+            values = self.expected_payoff(self._p, self.PAYOFF_TABLE)
         else:
-            values = self.expected_utility(self.opponent_dist, self.PAYOFF_TABLE, self.utility_fn)
+            values = self.expected_utility(self._p, self.PAYOFF_TABLE, self.utility_fn)
 
         max_val = np.max(values)
 
