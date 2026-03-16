@@ -5,23 +5,48 @@ from lake_mdp import LakeMDP
 from policies import RandomPolicy, CustomPolicy
 from utility_analyzer import UtilityAnalyzer
 
-# Default map (4x4 from the assignment PDF)
-DEFAULT_MAP = # TODO: implement
+DEFAULT_MAP = [
+    ['S', 'F', 'F', 'F'],
+    ['F', 'H', 'F', 'F'],
+    ['F', 'F', 'F', 'F'],
+    ['H', 'F', 'F', 'G'],
+]
 
 def evaluate_all(trials: int = 100, base_seed: int = 123):
     """
     Evaluate RandomPolicy and CustomPolicy for γ ∈ {0.5, 0.9, 1.0}.
     Returns a JSON-serializable dict with summaries and the winner per γ.
     """
+    mdp = LakeMDP(DEFAULT_MAP)
     report = {"n_trials": int(trials), "base_seed": int(base_seed), "gammas": {}}
 
-    # TODO: implement
+    for gamma in [0.5, 0.9, 1.0]:
+        analyzer = UtilityAnalyzer(mdp, gamma=gamma)
 
+        sum_rand = analyzer.evaluate(RandomPolicy, trials, base_seed)
+        sum_cust = analyzer.evaluate(CustomPolicy, trials, base_seed)
 
-    report["gammas"][str(gamma)] = {
-        "random": sum_rand,
-        "custom": sum_cust,
-        "winner": best,
-    }
+        # Tie-breaker logic
+        if sum_rand["mean_utility"] > sum_cust["mean_utility"]:
+            best = "random"
+        elif sum_cust["mean_utility"] > sum_rand["mean_utility"]:
+            best = "custom"
+        else:
+            # Means are equal, check variance
+            if sum_rand["utility_variance"] < sum_cust["utility_variance"]:
+                best = "random"
+            else:
+                best = "custom"
+
+        report["gammas"][str(gamma)] = {
+            "random": sum_rand,
+            "custom": sum_cust,
+            "winner": best,
+        }
 
     return report
+
+if __name__ == "__main__":
+    # Test the execution
+    results = evaluate_all()
+    print(json.dumps(results, indent=2))
