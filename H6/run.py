@@ -12,7 +12,7 @@ DEFAULT_MAP = [
     ['H', 'F', 'F', 'G'],
 ]
 
-def evaluate_all(trials: int = 100, base_seed: int = 123):
+def evaluate_all(trials: int = 10, base_seed: int = 42):
     """
     Evaluate RandomPolicy and CustomPolicy for γ ∈ {0.5, 0.9, 1.0}.
     Returns a JSON-serializable dict with summaries and the winner per γ.
