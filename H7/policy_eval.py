@@ -28,4 +28,12 @@ def iterative_policy_evaluation(
     -------
     v : (S,) array
     """
-    # TODO
+    S = P.shape[0]
+    v = np.zeros(S)
+    threshold = eps * (1 - gamma) / gamma if gamma < 1.0 else 0.0
+    for _ in range(max_iters):
+        v_new = bellman_update(v, P, r, gamma)
+        if np.max(np.abs(v_new - v)) < threshold:
+            return v_new
+        v = v_new
+    return v

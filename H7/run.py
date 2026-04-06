@@ -38,4 +38,24 @@ def run(
         v    : (S,) state-value vector aligned with the internal state ordering
         f_pi : scalar fitness f^{\hat{π}} = v^{\hat{π}}(s_0)
     """
-    # TODO
+    if rng is None:
+        rng = np.random.default_rng(42)
+
+    # 1. Construct a value-free policy
+    pi = MyPolicy(mdp, rng)
+
+    # 2. Build transition matrix and reward vector, then evaluate
+    states = enumerate_states(mdp)
+    P, r = build_policy_Pr(mdp, pi, states)
+
+    if method == "exact":
+        v = exact_policy_evaluation(P, r, gamma)
+    else:
+        v = iterative_policy_evaluation(P, r, gamma)
+
+    # 3. Fitness = value at the start state
+    s0 = mdp.start_state()
+    index = {s: i for i, s in enumerate(states)}
+    f_pi = float(v[index[s0]])
+
+    return pi, v, f_pi

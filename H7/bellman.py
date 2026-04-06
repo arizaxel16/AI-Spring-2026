@@ -24,7 +24,7 @@ def bellman_update(v: ArrayLike, P: ArrayLike, r: ArrayLike, gamma: float) -> Ar
     -------
     v_new : (S,) array
     """
-    # TODO
+    return r + gamma * (P @ v)
 
 
 def exact_policy_evaluation(P: ArrayLike, r: ArrayLike, gamma: float) -> ArrayLike:
@@ -41,4 +41,7 @@ def exact_policy_evaluation(P: ArrayLike, r: ArrayLike, gamma: float) -> ArrayLi
     -------
     v : (S,) array
     """
-    # TODO
+    S = P.shape[0]
+    A = np.eye(S) - gamma * P
+    v = np.linalg.solve(A, r)
+    return v
