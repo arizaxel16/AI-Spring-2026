@@ -50,7 +50,28 @@ class TabularPolicy(Policy):
         rng: np.random.Generator,
         table: Optional[Dict[State, Action]] = None,
     ):
-        raise NotImplementedError
+        super().__init__(mdp, rng)
+        self.table = table
+
+    def _decision(self, s: State) -> Action:
+        if self.table is not None and s in self.table:
+            return self.table[s]
+        actions = list(self.mdp.actions(s))
+        if len(actions) == 1 and actions[0] == ABSORB:
+            return ABSORB
+        return self.rng.choice(actions)
+
+    def probs(self, s: State) -> Dict[Action, float]:
+        if self.table is not None and s in self.table:
+            return {self.table[s]: 1.0}
+        actions = list(self.mdp.actions(s))
+        if len(actions) == 1 and actions[0] == ABSORB:
+            return {ABSORB: 1.0}
+        p = 1.0 / len(actions)
+        return {a: p for a in actions}
+
+    def action_probs(self, s: State) -> Dict[Action, float]:
+        return self.probs(s)
 
 
 def q_from_v(
@@ -89,7 +110,19 @@ def q_from_v(
     • The provided `v` is assumed to correspond to the same policy π implicitly
       used when `enumerate_states` and `transition` are evaluated.
     """
-    raise NotImplementedError
+    states = enumerate_states(mdp)
+    q = {}
+    for s in states:
+        actions = list(mdp.actions(s))
+        if len(actions) == 1 and actions[0] == ABSORB:
+            q[(s, ABSORB)] = 0.0
+            continue
+        for a in actions:
+            val = 0.0
+            for s_next, p in mdp.transition(s, a):
+                val += p * (mdp.reward(s_next) + gamma * v.get(s_next, 0.0))
+            q[(s, a)] = val
+    return q
 
 
 def v_from_q(
@@ -123,7 +156,15 @@ def v_from_q(
     ----------
     • Terminal states with no actions should return v(s) = 0.0.
     """
-    raise NotImplementedError
+    states = set()
+    for (s, a) in q:
+        states.add(s)
+    v = {}
+    for s in states:
+        p_dist = policy.probs(s)
+        val = sum(p_a * q.get((s, a), 0.0) for a, p_a in p_dist.items())
+        v[s] = val
+    return v
 
 
 def policy_evaluation(
@@ -172,7 +213,20 @@ def policy_evaluation(
     • Use only NumPy (no SciPy). Use `np.linalg.solve` for the exact solve path.
     • For γ very close to 1, prefer the exact solve path to avoid slow convergence.
     """
-    raise NotImplementedError
+    S = len(states)
+    if abs(gamma - 1.0) < 1e-12:
+        A = np.eye(S) - gamma * P
+        v_arr = np.linalg.lstsq(A, r, rcond=None)[0]
+    else:
+        v_arr = np.zeros(S)
+        threshold = eps * (1 - gamma) / gamma
+        for _ in range(max_iters):
+            v_new = r + gamma * (P @ v_arr)
+            if np.max(np.abs(v_new - v_arr)) < threshold:
+                v_arr = v_new
+                break
+            v_arr = v_new
+    return {states[i]: float(v_arr[i]) for i in range(S)}
 
 
 def _action_order_key(a: Action) -> Tuple[int, str]:
@@ -196,7 +250,11 @@ def _action_order_key(a: Action) -> Tuple[int, str]:
     Tuple[int, str]
         Comparable key for sorted().
     """
-    raise NotImplementedError
+    try:
+        rank = _ACTION_ORDER.index(a)
+    except ValueError:
+        rank = len(_ACTION_ORDER)
+    return (rank, str(a))
 
 
 def policy_improvement(
@@ -235,7 +293,25 @@ def policy_improvement(
     ----------
     • If a state has no admissible actions, set π'(s) = ABSORB and skip arrows.
     """
-    raise NotImplementedError
+    states = enumerate_states(mdp)
+    q = q_from_v(mdp, v, gamma)
+    advantage: Dict[Tuple[State, Action], float] = {}
+    table: Dict[State, Action] = {}
+
+    for s in states:
+        actions = list(mdp.actions(s))
+        if len(actions) == 1 and actions[0] == ABSORB:
+            table[s] = ABSORB
+            advantage[(s, ABSORB)] = 0.0
+            continue
+        for a in actions:
+            advantage[(s, a)] = q[(s, a)] - v.get(s, 0.0)
+        best_a = min(actions, key=lambda a: (-advantage[(s, a)], _action_order_key(a)))
+        table[s] = best_a
+
+    rng = np.random.default_rng(0)
+    new_policy = TabularPolicy(mdp, rng, table=table)
+    return new_policy, advantage
 
 
 def policy_iteration(
@@ -275,7 +351,19 @@ def policy_iteration(
     • The stability check must be deterministic: compare action tables state by state.
     • Do not plot or print inside this function (keep it pure for autograding).
     """
-    raise NotImplementedError
+    states = enumerate_states(mdp)
+
+    while True:
+        P, r = build_policy_Pr(mdp, policy, states)
+        v = policy_evaluation(P, r, gamma, states)
+        new_policy, advantage = policy_improvement(mdp, v, gamma)
+
+        old_table = getattr(policy, 'table', None)
+        if old_table is not None:
+            if all(old_table.get(s) == new_policy.table.get(s) for s in states):
+                return new_policy, v
+
+        policy = new_policy
 
 
 def get_optimal_policy(
@@ -308,4 +396,6 @@ def get_optimal_policy(
     • Do not change function name or signature (autograded).
     • Do not print or plot here.
     """
-    raise NotImplementedError
+    pi = TabularPolicy(mdp, rng)
+    pi_star, _ = policy_iteration(mdp, pi, gamma)
+    return pi_star
