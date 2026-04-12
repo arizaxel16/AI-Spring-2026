@@ -67,7 +67,22 @@ def q_from_v(mdp, v, gamma):
     dict
         A nested dictionary q[s][a] representing the Q-values.
     """
-    # TODO
+    q = {}
+    all_states = [
+        ((i, j), cell)
+        for i, row in enumerate(mdp.grid)
+        for j, cell in enumerate(row)
+    ]
+    all_states.append((ABSORB, ABSORB))
+
+    for s in all_states:
+        q[s] = {}
+        for a in mdp.actions(s):
+            val = mdp.reward(s)
+            for ns, p in mdp.transition(s, a):
+                val += gamma * p * v.get(ns, 0.0)
+            q[s][a] = val
+    return q
 
 
 def make_greedy_policy(mdp, v, gamma):
@@ -88,7 +103,11 @@ def make_greedy_policy(mdp, v, gamma):
     dict
         A mapping from states to greedy actions.
     """
-    # TODO
+    q = q_from_v(mdp, v, gamma)
+    policy = {}
+    for s in q:
+        policy[s] = max(q[s], key=lambda a: q[s][a])
+    return policy
 
 
 def policy_mismatch(q_true, q_est):
@@ -107,7 +126,13 @@ def policy_mismatch(q_true, q_est):
     list
         States where the greedy actions differ.
     """
-    # TODO
+    mismatches = []
+    for s in q_true:
+        best_true = max(q_true[s], key=lambda a: q_true[s][a])
+        best_est = max(q_est[s], key=lambda a: q_est[s][a])
+        if best_true != best_est:
+            mismatches.append(s)
+    return mismatches
 
 
 class ValueIteration:
@@ -139,7 +164,36 @@ class ValueIteration:
         TabularPolicy
             The optimal policy derived from the converged value function.
         """
-        # TODO
+        all_states = [
+            ((i, j), cell)
+            for i, row in enumerate(mdp.grid)
+            for j, cell in enumerate(row)
+        ]
+        all_states.append((ABSORB, ABSORB))
+
+        v = {s: 0.0 for s in all_states}
+
+        while True:
+            v_new = {}
+            for s in all_states:
+                best = float('-inf')
+                for a in mdp.actions(s):
+                    q_val = 0.0
+                    for ns, p in mdp.transition(s, a):
+                        q_val += p * v.get(ns, 0.0)
+                    if q_val > best:
+                        best = q_val
+                v_new[s] = mdp.reward(s) + self.gamma * best
+
+            delta = max(abs(v_new[s] - v[s]) for s in all_states)
+            v = v_new
+
+            if delta < self.epsilon * (1 - self.gamma) / self.gamma:
+                break
+
+        policy_table = make_greedy_policy(mdp, v, self.gamma)
+        rng = np.random.default_rng(0)
+        return TabularPolicy(mdp, rng, table=policy_table)
 
 
 class PolicyEvaluationFactory:
@@ -177,7 +231,20 @@ class PolicyEvaluationFactory:
         self.async_mode = async_mode
         self.subset = subset
 
-        # TODO: Initialize state-values
+        all_states = [
+            ((i, j), cell)
+            for i, row in enumerate(mdp.grid)
+            for j, cell in enumerate(row)
+        ]
+        all_states.append((ABSORB, ABSORB))
+
+        if initial_values is not None:
+            self.v = dict(initial_values)
+            for s in all_states:
+                if s not in self.v:
+                    self.v[s] = 0.0
+        else:
+            self.v = {s: 0.0 for s in all_states}
 
     def synchronous_update(self):
         """
@@ -185,7 +252,14 @@ class PolicyEvaluationFactory:
 
         Updates all states simultaneously using the Bellman expectation equation.
         """
-        # TODO: Update self.v, that attribute will be used in the tests
+        v_new = {}
+        for s in self.v:
+            a = self.policy(s)
+            val = self.mdp.reward(s)
+            for ns, p in self.mdp.transition(s, a):
+                val += self.gamma * p * self.v.get(ns, 0.0)
+            v_new[s] = val
+        self.v = v_new
 
     def asynchronous_update(self):
         """
@@ -193,7 +267,13 @@ class PolicyEvaluationFactory:
 
         Only updates the specified subset of states using the Bellman expectation equation.
         """
-        # TODO: Update self.v, that attribute will be used in the tests
+        states_to_update = self.subset if self.subset is not None else list(self.v.keys())
+        for s in states_to_update:
+            a = self.policy(s)
+            val = self.mdp.reward(s)
+            for ns, p in self.mdp.transition(s, a):
+                val += self.gamma * p * self.v.get(ns, 0.0)
+            self.v[s] = val
 
     def step(self):
         """
@@ -201,7 +281,10 @@ class PolicyEvaluationFactory:
 
         Uses synchronous or asynchronous update depending on initialization.
         """
-        # TODO
+        if self.async_mode:
+            self.asynchronous_update()
+        else:
+            self.synchronous_update()
 
 
 class GeneralPolicyIteration:
@@ -230,16 +313,56 @@ class GeneralPolicyIteration:
         self.async_mode = async_mode
         self.subset = subset
 
-    def run(self):
+    def run(self, init_policy=None):
         """
         Run the GPI algorithm starting from an initial policy.
+
+        Parameters
+        ----------
+        init_policy : TabularPolicy, optional
+            An initial policy to start from. If None, a random policy is created.
 
         Returns
         -------
         TabularPolicy
             The final improved policy after convergence.
         """
-        # TODO
+        rng = np.random.default_rng(0)
+
+        if init_policy is not None:
+            policy = init_policy
+        else:
+            policy = TabularPolicy(self.mdp, rng)
+
+        all_states = [
+            ((i, j), cell)
+            for i, row in enumerate(self.mdp.grid)
+            for j, cell in enumerate(row)
+        ]
+        all_states.append((ABSORB, ABSORB))
+
+        v = {s: 0.0 for s in all_states}
+
+        while True:
+            evaluator = PolicyEvaluationFactory(
+                self.mdp, self.gamma, policy,
+                async_mode=self.async_mode,
+                subset=self.subset,
+                initial_values=v,
+            )
+            for _ in range(self.steps_per_eval):
+                evaluator.step()
+            v = evaluator.v
+
+            new_table = make_greedy_policy(self.mdp, v, self.gamma)
+            new_policy = TabularPolicy(self.mdp, rng, table=new_table)
+
+            if all(policy.table[s] == new_policy.table[s] for s in all_states):
+                break
+
+            policy = new_policy
+
+        return policy
 
 
 # Example usage and testing
