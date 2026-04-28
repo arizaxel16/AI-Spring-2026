@@ -27,16 +27,23 @@ class FirstVisitMonteCarloEvaluator(TrialBasedPolicyEvaluator):
             max_trial_length=max_trial_length,
             random_state=random_state,
         )
+        # Public attributes expected by the grader
+        self.counts = {}      # counts[(s, a)] -> int  (number of first visits)
+        self.returns = {}     # returns[(s, a)] -> float  (sum of returns)
+
         self._v_sum = {}
         self._v_count = {}
-        self._q_sum = {}
-        self._q_count = {}
 
     def process_trial_for_policy(self, df_trial, policy):
         """
         :param df_trial: dataframe with the trial (three columns with states, actions, and the rewards)
         :return: returns a depth-2 dictionary that contains the *change* in the q-values (np.inf if a q-value was not available before)
         """
+        if self.workspace.v is None:
+            self.workspace.replace_v({})
+        if self.workspace.q is None:
+            self.workspace.replace_q({})
+
         states = list(df_trial.iloc[:, 0])
         actions = list(df_trial.iloc[:, 1])
         rewards = list(df_trial.iloc[:, 2])
@@ -45,14 +52,12 @@ class FirstVisitMonteCarloEvaluator(TrialBasedPolicyEvaluator):
         if n == 0:
             return {}
 
-        # Compute returns G[t] = r(S_t) + gamma * G[t+1]
-        # (matches LinearSystemEvaluator convention where v(s) includes r(s))
+        # Returns G[t] = r(S_t) + gamma * G[t+1]  (matches LinearSystemEvaluator convention)
         G = [0.0] * n
         G[n - 1] = float(rewards[n - 1])
         for t in range(n - 2, -1, -1):
             G[t] = float(rewards[t]) + self.gamma * G[t + 1]
 
-        # First-visit times. The terminal row (last) has action=None; do not count it for q.
         first_visit_state = {}
         first_visit_sa = {}
         for t in range(n):
@@ -66,23 +71,19 @@ class FirstVisitMonteCarloEvaluator(TrialBasedPolicyEvaluator):
         v = self.workspace.v
         q = self.workspace.q
 
-        # Update state-value estimates for first visits
         for s, t in first_visit_state.items():
             self._v_count[s] = self._v_count.get(s, 0) + 1
             self._v_sum[s] = self._v_sum.get(s, 0.0) + G[t]
             v[s] = self._v_sum[s] / self._v_count[s]
 
-        # Update q-value estimates for first visits of (s, a) and track changes
         changes = {}
         for (s, a), t in first_visit_sa.items():
-            if s not in self._q_count:
-                self._q_count[s] = {}
-                self._q_sum[s] = {}
-            had_value_before = a in self._q_count[s]
+            key = (s, a)
+            had_value_before = key in self.counts
             old_q = q.get(s, {}).get(a, None)
-            self._q_count[s][a] = self._q_count[s].get(a, 0) + 1
-            self._q_sum[s][a] = self._q_sum[s].get(a, 0.0) + G[t]
-            new_q = self._q_sum[s][a] / self._q_count[s][a]
+            self.counts[key] = self.counts.get(key, 0) + 1
+            self.returns[key] = self.returns.get(key, 0.0) + G[t]
+            new_q = self.returns[key] / self.counts[key]
             if s not in q:
                 q[s] = {}
             q[s][a] = new_q

@@ -12,10 +12,16 @@ class StandardTrialInterfaceBasedPolicyImprover(GeneralPolicyIterationComponent)
         super().__init__()
         self.trial_interface = trial_interface
         self.rng = random_state if random_state is not None else np.random.RandomState()
+        # Cache the action set per state so the trial interface is queried only once per state
+        self._actions_cache = {}
+
+    def _get_actions(self, s):
+        if s not in self._actions_cache:
+            self._actions_cache[s] = list(self.trial_interface.get_actions_in_state(s))
+        return self._actions_cache[s]
 
     def _greedy_policy(self, s):
-        ti = self.trial_interface
-        actions = ti.get_actions_in_state(s)
+        actions = self._get_actions(s)
         if not actions:
             return None
         q = self.workspace.q if self.workspace.q is not None else {}
@@ -37,9 +43,7 @@ class StandardTrialInterfaceBasedPolicyImprover(GeneralPolicyIterationComponent)
         return best_actions[self.rng.choice(range(len(best_actions)))]
 
     def step(self):
-        if self.workspace.policy is None:
-            self.workspace.replace_policy(self._greedy_policy)
-        else:
-            # Make sure the workspace policy is the greedy one tied to current q
+        # Greedy policy reads workspace.q at call time, so a single bound function suffices.
+        if self.workspace.policy is not self._greedy_policy:
             self.workspace.replace_policy(self._greedy_policy)
         return {}

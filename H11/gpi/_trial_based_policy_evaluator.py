@@ -26,10 +26,20 @@ class TrialBasedPolicyEvaluator(GeneralPolicyIterationComponent):
         self.rng = random_state if random_state is not None else np.random.RandomState()
 
     def _is_terminal(self, s):
+        # Robust to trial interfaces that do not expose `is_terminal_state` or `mdp`
         ti = self.trial_interface
-        if hasattr(ti, "mdp") and ti.mdp is not None:
-            return ti.mdp.is_terminal_state(s)
-        return ti.is_terminal_state(s)
+        if hasattr(ti, "is_terminal_state"):
+            try:
+                return ti.is_terminal_state(s)
+            except Exception:
+                pass
+        if hasattr(ti, "mdp") and ti.mdp is not None and hasattr(ti.mdp, "is_terminal_state"):
+            try:
+                return ti.mdp.is_terminal_state(s)
+            except Exception:
+                pass
+        actions = ti.get_actions_in_state(s)
+        return not actions
 
     def _generate_trial(self, policy):
         ti = self.trial_interface
@@ -67,10 +77,11 @@ class TrialBasedPolicyEvaluator(GeneralPolicyIterationComponent):
         if self.workspace.q is None:
             self.workspace.replace_q({})
 
-        trial = self._generate_trial(self.workspace.policy)
-        info = self.process_trial_for_policy(trial, self.workspace.policy)
+        policy = self.workspace.policy
+        trial = self._generate_trial(policy)
+        sub_report = self.process_trial_for_policy(trial, policy)
 
-        return {"trial_length": len(trial), "info": info}
+        return {"trial_length": len(trial), "info": sub_report, "processed": True}
 
     @abstractmethod
     def process_trial_for_policy(self, trial, policy):
